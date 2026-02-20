@@ -287,4 +287,11 @@ FOR EACH ROW
 EXECUTE FUNCTION prevent_expired_dispense();
 
 
+/*=======================
+ * 4th Trigger: Cancelled Perscription
+ =======================
+ SARA EXPLAIN WHAT THE TRIGGER DOES HERE: 
+
+ =====================
+ */
 
