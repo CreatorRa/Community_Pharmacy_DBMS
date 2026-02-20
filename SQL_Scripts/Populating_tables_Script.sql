@@ -1,3 +1,4 @@
+-- 1st Part No foreign Key COMPLETED
 -- DOCTOR
 INSERT INTO doctor VALUES
 (701,'Dr. Lara Weiss','LIC-701','Main Street 10'),
@@ -76,7 +77,7 @@ INSERT INTO generics VALUES
 ('Salbutamol','Albuterol'),
 ('Azithromycin','Azithromycin');
 
-
+--2nd PART: Drug and Inventory
 -- DRUG_CATALOGUE
 INSERT INTO drug_catalogue VALUES
 (2001,'Amoxicillin','Capsule','500mg'),
@@ -103,3 +104,9 @@ INSERT INTO inventory_lot VALUES
 (3009,'2027-05-31',5.5,120,2009),
 (3010,'2027-04-30',6.0,140,2010);
 
+--3rd Part: Perscription + Items
+
+
+-- 4th Part: Dispense + Iteam
+
+-- 5th Part: Purchase + Pays
