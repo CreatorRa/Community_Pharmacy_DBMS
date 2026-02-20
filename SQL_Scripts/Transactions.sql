@@ -33,3 +33,8 @@ WHERE lot_batch_id = 3001;
 SELECT COUNT(*) AS times_used, SUM(qty_dispensed) AS total_dispensed
 FROM dispensed_items
 WHERE lot_batch_id = 3001;
+
+--it resets the changes you did above
+UPDATE inventory_lot
+SET qty_on_hand = 200
+WHERE lot_batch_id = 3001;
