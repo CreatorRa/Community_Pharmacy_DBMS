@@ -46,3 +46,37 @@ COMMIT;
 
 --Final Verification to show inventory is back to normal
 SELECT lot_batch_id, qty_on_hand FROM inventory_lot WHERE lot_batch_id = 3001;
+
+-- Transaction 3: Creating a Multi-Item Purchase Order
+---------------------------------------------------------------------------
+-- Scenario: The pharmacy is ordering new stock. 
+-- The Order Header and the Order Items must be created in the exact same transaction. 
+-- If the items fail to save, the header should be rolled back automatically.
+---------------------------------------------------------------------------
+BEGIN;
+
+    -- Step 1: Create the Order Header
+    -- We are using today's date (Feb 21, 2026) and expecting delivery in 5 days.
+    -- This satisfies the constraint: Expected_delivery_date >= Order_date!
+    INSERT INTO PURCHASE_ORDER (Order_id, Order_date, Expected_delivery_date, Status, Supplier_ID)
+    VALUES (6101, '2026-02-21', '2026-02-26', 'PENDING', 1001);
+
+    -- Step 2: Add the first drug to the order (Amoxicillin - Drug_id 2001)
+    -- We order 100 units. 
+    --Satisfies the CHECK (Qty_ordered > 0) constraint.
+    INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
+    VALUES (6101, 2001, 100, 1.90);
+
+    -- Step 3: Add the second drug to the order (Ibuprofen - Drug_id 2002)
+    INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
+    VALUES (6101, 2002, 250, 0.80);
+
+COMMIT;
+
+-- Verification Query to show the professor that the join works perfectly
+SELECT po.Order_id, s.Company_name, po.Status, poi.Qty_ordered, dc.Drug_Name
+FROM PURCHASE_ORDER po
+JOIN PURCHASE_ORDER_ITEM poi ON po.Order_id = poi.Product_id
+JOIN SUPPLIER s ON po.Supplier_ID = s.Supplier_ID
+JOIN DRUG_CATALOGUE dc ON poi.Drug_id = dc.Drug_id
+WHERE po.Order_id = 6101;
