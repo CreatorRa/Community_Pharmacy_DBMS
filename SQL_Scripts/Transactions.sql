@@ -35,6 +35,13 @@ FROM dispensed_items
 WHERE lot_batch_id = 3001;
 
 --it resets the changes you did above
-UPDATE inventory_lot
-SET qty_on_hand = 200
-WHERE lot_batch_id = 3001;
+--starting with begin is not suggested when Auto-commit is off
+BEGIN;
+
+DELETE FROM dispensed_items WHERE line_item_id = 6101;
+DELETE FROM dispense WHERE dispense_id = 5101;
+
+DELETE FROM prescription_items WHERE rx_id = 4101;
+DELETE FROM prescription WHERE rx_id = 4101;
+
+COMMIT;
