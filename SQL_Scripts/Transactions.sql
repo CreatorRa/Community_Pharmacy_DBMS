@@ -37,7 +37,7 @@ SET qty_on_hand = qty_on_hand + 2
 WHERE lot_batch_id = 3001;
 
 -- Now we can safely delete from the bottom to the top (Child to Parent)
-DeLETE FROM dispensed_items WHERE line_item_id = 6101;
+DELETE FROM dispensed_items WHERE line_item_id = 6101;
 DELETE FROM dispense WHERE dispense_id = 5101;
 DELETE FROM prescription_items WHERE rx_id = 4101;
 DELETE FROM prescription WHERE rx_id = 4101;
@@ -55,21 +55,21 @@ SELECT lot_batch_id, qty_on_hand FROM inventory_lot WHERE lot_batch_id = 3001;
 ---------------------------------------------------------------------------
 BEGIN;
 
-    -- Step 1: Create the Order Header
-    -- We are using today's date (Feb 21, 2026) and expecting delivery in 5 days.
-    -- This satisfies the constraint: Expected_delivery_date >= Order_date!
-    INSERT INTO PURCHASE_ORDER (Order_id, Order_date, Expected_delivery_date, Status, Supplier_ID)
-    VALUES (6101, '2026-02-21', '2026-02-26', 'PENDING', 1001);
+-- Step 1: Create the Order Header
+-- We are using today's date (Feb 21, 2026) and expecting delivery in 5 days.
+-- This satisfies the constraint: Expected_delivery_date >= Order_date!
+INSERT INTO PURCHASE_ORDER (Order_id, Order_date, Expected_delivery_date, Status, Supplier_ID)
+VALUES (6101, '2026-02-21', '2026-02-26', 'PENDING', 1001);
 
-    -- Step 2: Add the first drug to the order (Amoxicillin - Drug_id 2001)
-    -- We order 100 units. 
-    --Satisfies the CHECK (Qty_ordered > 0) constraint.
-    INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
-    VALUES (6101, 2001, 100, 1.90);
+-- Step 2: Add the first drug to the order (Amoxicillin - Drug_id 2001)
+-- We order 100 units. 
+--Satisfies the CHECK (Qty_ordered > 0) constraint.
+INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
+VALUES (6101, 2001, 100, 1.90);
 
-    -- Step 3: Add the second drug to the order (Ibuprofen - Drug_id 2002)
-    INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
-    VALUES (6101, 2002, 250, 0.80);
+-- Step 3: Add the second drug to the order (Ibuprofen - Drug_id 2002)
+INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
+VALUES (6101, 2002, 250, 0.80);
 
 COMMIT;
 
