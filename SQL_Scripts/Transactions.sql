@@ -80,3 +80,55 @@ JOIN PURCHASE_ORDER_ITEM poi ON po.Order_id = poi.Product_id
 JOIN SUPPLIER s ON po.Supplier_ID = s.Supplier_ID
 JOIN DRUG_CATALOGUE dc ON poi.Drug_id = dc.Drug_id
 WHERE po.Order_id = 6101;
+
+-- =====================================================================
+-- Transaction 4: Purchase Order Edit (INSERT + UPDATE + DELETE)
+-- Scenario:
+--   1) Create a new purchase order + two items (INSERTs)
+--   2) Change quantity for one item (UPDATE)
+--   3) Remove other item from the same order (DELETE)
+
+BEGIN;
+
+-- 1) Create a new purchase order header
+--    Expected_delivery_date must be >= Order_date (constraint from Assignment 5)
+INSERT INTO PURCHASE_ORDER (Order_id, Order_date, Expected_delivery_date, Status, Supplier_ID)
+VALUES (6102, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), 'PENDING', 1001);
+
+-- 2) Add two items to the order (valid Drug IDs must exist in DRUG_CATALOGUE)
+INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
+VALUES (6102, 2001, 150, 1.90);
+
+INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
+VALUES (6102, 2002, 100, 0.80);
+
+-- 3) UPDATE: Supplier confirms different quantity for Amoxicillin (Drug 2001)
+UPDATE PURCHASE_ORDER_ITEM
+SET Qty_ordered = 200
+WHERE Product_id = 6102
+  AND Drug_id = 2001;
+
+-- 4) DELETE: Pharmacy decides to remove Ibuprofen (Drug 2002) from this order
+DELETE FROM PURCHASE_ORDER_ITEM
+WHERE Product_id = 6102
+  AND Drug_id = 2002;
+
+COMMIT;
+
+-- Verification: Show the final saved state of the order after the edits
+SELECT
+    po.Order_id,
+    s.Company_name,
+    po.Status,
+    poi.Drug_id,
+    dc.Drug_Name,
+    poi.Qty_ordered,
+    poi.Unit_cost
+FROM PURCHASE_ORDER po
+JOIN SUPPLIER s
+  ON po.Supplier_ID = s.Supplier_ID
+JOIN PURCHASE_ORDER_ITEM poi
+  ON po.Order_id = poi.Product_id
+JOIN DRUG_CATALOGUE dc
+  ON poi.Drug_id = dc.Drug_id
+WHERE po.Order_id = 6102;
