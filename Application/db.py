@@ -24,6 +24,5 @@ def get_connection():
 # This makes it super easy to run a SELECT query and turn the results 
 # into a neat Pandas table that Streamlit can display.
 def run_query(query, params=None):
-    conn = get_connection()
-    # pandas.read_sql perfectly formats SQL output into a data table
-    return pd.read_sql(query, conn, params=params)
+    with psycopg.connect(DATABASE_URL) as conn:
+        return pd.read_sql(query, conn, params=params)
