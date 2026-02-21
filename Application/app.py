@@ -55,11 +55,12 @@ with colC:
     st.warning("**📦 3. Order Stock**\n\nCreate new purchase orders and restock low-inventory items.")
 
 # 5. DISCREET CONNECTION STATUS (Footer)
-st.markdown("<br><br>", unsafe_allow_html=True) # Adds some blank space
+st.markdown("<br><br>", unsafe_allow_html=True) 
+
 try:
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1;")
-            st.caption("🟢 System Status: Database Connected Securely")
+    conn = get_connection() # Grab the connection without the "with" block!
+    with conn.cursor() as cur: # It's okay to close the cursor, just not the connection
+        cur.execute("SELECT 1;")
+        st.caption("🟢 System Status: Database Connected Securely")
 except Exception as e:
     st.caption(f"🔴 System Status: Disconnected ({e})")
