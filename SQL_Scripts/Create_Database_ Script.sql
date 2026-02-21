@@ -287,4 +287,39 @@ FOR EACH ROW
 EXECUTE FUNCTION prevent_expired_dispense();
 
 
+/*=======================
+ * 4th Trigger: Cancelled Perscription
+ =======================
+ You cannot INSERT a dispense record for a prescription with status = 'Cancelled' 
+
+ =====================
+ */
+
+CREATE OR REPLACE FUNCTION assert_no_dispense_for_cancelled_rx()
+RETURNS TRIGGER AS $$
+DECLARE
+    rx_status VARCHAR(50);
+BEGIN
+    SELECT status INTO rx_status
+    FROM prescription
+    WHERE rx_id = NEW.rx_id;
+
+    IF rx_status = 'Cancelled' THEN
+        RAISE EXCEPTION
+        'ASSERTION FAILED: Cannot dispense a cancelled prescription (rx_id=%).',
+        NEW.rx_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_assert_no_dispense_cancelled ON dispense;
+
+CREATE TRIGGER trg_assert_no_dispense_cancelled
+BEFORE INSERT OR UPDATE ON dispense
+FOR EACH ROW
+EXECUTE FUNCTION assert_no_dispense_for_cancelled_rx();
+
+
 
