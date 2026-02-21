@@ -93,7 +93,7 @@ BEGIN;
 -- 1) Create a new purchase order header
 --    Expected_delivery_date must be >= Order_date (constraint from Assignment 5)
 INSERT INTO PURCHASE_ORDER (Order_id, Order_date, Expected_delivery_date, Status, Supplier_ID)
-VALUES (6102, CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 7 DAY), 'PENDING', 1001);
+VALUES (6102, CURRENT_DATE, CURRENT_DATE + 7, 'PENDING', 1001);
 
 -- 2) Add two items to the order (valid Drug IDs must exist in DRUG_CATALOGUE)
 INSERT INTO PURCHASE_ORDER_ITEM (Product_id, Drug_id, Qty_ordered, Unit_cost)
