@@ -132,3 +132,36 @@ JOIN PURCHASE_ORDER_ITEM poi
 JOIN DRUG_CATALOGUE dc
   ON poi.Drug_id = dc.Drug_id
 WHERE po.Order_id = 6102;
+
+
+-- Transaction 5: Insurance Claim Adjustment (UPDATE + Verification)
+---------------------------------------------------------------------------
+-- Scenario:
+-- A dispense was already created and linked to insurance.
+-- Later, the insurance company adjusts the amount covered (e.g., approves more coverage).
+-- This transaction updates PAYS.Amount_covered and verifies the change.
+---------------------------------------------------------------------------
+
+BEGIN;
+
+-- Update coverage amount for an existing dispense + policy
+-- (Use existing IDs from your tuples: Dispense_id 5001 and Policy_id 901 exist)
+UPDATE PAYS
+SET Amount_covered = 12.50
+WHERE Dispense_id = 5001
+  AND Policy_id = 901;
+
+COMMIT;
+
+-- Verification: show the updated insurance coverage
+SELECT Dispense_id, Policy_id, Amount_covered
+FROM PAYS
+WHERE Dispense_id = 5001
+  AND Policy_id = 901;
+
+-- Optional verification: show dispense total vs covered amount for clarity
+SELECT d.Dispense_id, d.Total_amount, p.Amount_covered
+FROM DISPENSE d
+JOIN PAYS p ON d.Dispense_id = p.Dispense_id
+WHERE d.Dispense_id = 5001
+  AND p.Policy_id = 901;
