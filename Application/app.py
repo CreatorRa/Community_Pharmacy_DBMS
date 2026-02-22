@@ -1,195 +1,256 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.express as px
+from db import get_connection
 
-# 1. PAGE CONFIGURATION (Must be the very first Streamlit command)
-st.set_page_config(
-    page_title="Pharmacy Dashboard", 
-    page_icon="⚕️", 
-    layout="wide",
-    initial_sidebar_state="expanded"
+# =====================================================================
+# UI INITIALIZATION & CSS
+# =====================================================================
+st.set_page_config(page_title="Pharmacy DBMS", layout="wide", initial_sidebar_state="expanded")
+
+st.markdown(
+    """
+    <style>
+      /* Main App Background */
+      [data-testid="stAppViewContainer"] { background-color: #f4f6f9; }
+      [data-testid="stHeader"] { background-color: transparent; }
+
+     /* MAIN AREA TEXT: Target paragraphs, subheaders, and spans */
+      section.main title,
+      section.main p,
+      section.main h1, 
+      section.main h2, 
+      section.main h3, 
+      section.main h4, 
+      section.main h5, 
+      section.main h6, 
+      section.main span { 
+      color: #000000 !important; 
+      }
+
+      /* SIDEBAR TEXT: Strictly target the sidebar and force to Pure White */
+      section[data-testid="stSidebar"] p, 
+      section[data-testid="stSidebar"] h1, 
+      section[data-testid="stSidebar"] h2, 
+      section[data-testid="stSidebar"] h3, 
+      section[data-testid="stSidebar"] h4, 
+      section[data-testid="stSidebar"] h5, 
+      section[data-testid="stSidebar"] h6, 
+      section[data-testid="stSidebar"] span,
+      section[data-testid="stSidebar"] div { 
+          color: #ffffff !important; 
+      }
+
+      /* KPI Card Styling with Hover Physics */
+      .card {
+        background: #ffffff;
+        border: 1px solid #e1e4e8;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        text-align: center;
+        transition: all 0.2s ease-in-out;
+      }
+      .card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+          border-color: #c0c6cc;
+      }
+      
+      /* KPI text colors (the !important tags protect them from the dark text rule above) */
+      .card-title { font-size: 1.05rem; color: #5f6368 !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+      .card-value { font-size: 2.8rem; font-weight: 700; color: #0d47a1 !important; margin-top: 8px; }
+      
+      /* Footer Styling */
+      .footer { text-align: center; font-size: 0.85rem; color: #888 !important; margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
-# --- THEME TOGGLE ---
+# =====================================================================
+# SIDEBAR BRANDING
+# =====================================================================
 with st.sidebar:
-    st.title("Settings")
-    theme_mode = st.radio("Choose Theme", ["Dark", "Light"])
+    st.markdown("### System Portal")
+    st.markdown("Logged in as: **Admin User**")
+    st.markdown("Role: **System Architect**")
+    st.divider()
+    st.info("Database Connection: ONLINE")
+    st.caption("Version 1.0.0 | Built for PostgreSQL")
 
-# Define Theme Colors
-if theme_mode == "Dark":
-    bg_color = "#1E1A3C"
-    bg_image_css = "none"
-    overlay_color = "transparent"
-    card_bg = "linear-gradient(135deg, #322A5C 0%, #221D40 100%)"
-    text_color = "white"
-    sub_text = "#A09DB0"
-    plot_bg = "#2A2548"
-    border_color = "rgba(255, 255, 255, 0.05)"
-    backdrop_blur = "none"
+# Your excellent inline CSS fix for the title!
+st.markdown("<h1 style='color: black;'>Pharmacy Management System</h1>", unsafe_allow_html=True)
+st.markdown("<p style='color: black;'>Welcome to the Central Database Portal. Monitor system health or select a quick action below.</p>", unsafe_allow_html=True)
+st.divider()
+
+# =====================================================================
+# LIVE DATA AGGREGATION & RECENT ACTIVITY
+# =====================================================================
+@st.cache_data(ttl=60)
+def fetch_landing_page_data():
+    conn = get_connection()
+    try:
+        kpi_df = pd.read_sql("""
+            SELECT 
+                (SELECT COUNT(*) FROM PATIENT) AS total_patients,
+                (SELECT COUNT(*) FROM PURCHASE_ORDER WHERE Status = 'PENDING') AS pending_orders,
+                (SELECT COUNT(*) FROM INVENTORY_LOT WHERE Qty_on_hand < 100) AS low_stock_items,
+                (SELECT COUNT(*) FROM prescription) AS total_prescriptions
+        """, conn)
+        
+        orders_df = pd.read_sql("""
+            SELECT Status, COUNT(*) as count 
+            FROM PURCHASE_ORDER 
+            GROUP BY Status;
+        """, conn)
+        
+        inventory_df = pd.read_sql("""
+            SELECT 
+                CASE 
+                    WHEN Qty_on_hand < 100 THEN 'Low Stock'
+                    ELSE 'Healthy Stock'
+                END AS Stock_Status,
+                COUNT(*) as count
+            FROM INVENTORY_LOT
+            GROUP BY Stock_Status;
+        """, conn)
+        
+        recent_rx_df = pd.read_sql("""
+            SELECT 
+                rx_id AS "Rx ID",
+                rx_date AS "Date",
+                urgency AS "Urgency",
+                status AS "Status"
+            FROM prescription
+            ORDER BY rx_date DESC, rx_id DESC
+            LIMIT 5;
+        """, conn)
+        
+        return kpi_df.iloc[0], orders_df, inventory_df, recent_rx_df
+        
+    except Exception as e:
+        st.error(f"Failed to fetch live database metrics: {e}")
+        return None, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+
+kpis, orders_data, inventory_data, recent_rx_df = fetch_landing_page_data()
+
+# =====================================================================
+# LIVE KPI CARDS
+# =====================================================================
+if kpis is not None:
+    col1, col2, col3, col4 = st.columns(4)
     
-    # Tile variables (invisible in Dark Mode)
-    tile_bg = "transparent"
-    tile_blur = "none"
-    tile_border = "none"
-    tile_shadow = "none"
-else:
-    bg_color = "#F8F9FB"
-    bg_image_css = "url('https://destudio.es/wp-content/uploads/2024/06/FarmaciaAnaRedondo_Web6-1.jpg')"
-    # Lightened the full-page overlay so the background image is visible
-    overlay_color = "rgba(248, 249, 251, 0.2)" 
-    card_bg = "rgba(255, 255, 255, 0.75)"
-    text_color = "#1E1A3C"
-    sub_text = "#5E5E5E"
-    plot_bg = "rgba(225, 228, 232, 0.5)"
-    border_color = "rgba(0, 0, 0, 0.1)"
-    backdrop_blur = "blur(9px)"
+    # CSS for the help icon to ensure it sits nicely next to the title
+    icon_style = "cursor: help; color: #a0aab5; margin-left: 6px; font-size: 0.95rem; vertical-align: middle;"
     
-    # Frosted Glass Tile variables for Light Mode
-    tile_bg = "rgba(255, 255, 255, 0.35)"
-    tile_blur = "blur(4px)"
-    tile_border = "1px solid rgba(255, 255, 255, 0.6)"
-    tile_shadow = "0 15px 50px rgba(0, 0, 0, 0.2)"
+    with col1:
+        st.markdown(f"""
+            <div class='card'>
+                <div class='card-title'>
+                    Total Patients 
+                    <span title='Total number of registered patients in the database.' style='{icon_style}'>&#9432;</span>
+                </div>
+                <div class='card-value'>{kpis['total_patients']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+    with col2:
+        st.markdown(f"""
+            <div class='card'>
+                <div class='card-title'>
+                    Pending Orders 
+                    <span title='Orders that have been placed but not yet FULFILLED.' style='{icon_style}'>&#9432;</span>
+                </div>
+                <div class='card-value'>{kpis['pending_orders']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+    with col3:
+        st.markdown(f"""
+            <div class='card'>
+                <div class='card-title'>
+                    Low Stock Alerts 
+                    <span title='Inventory lots where the quantity on hand has dropped below 100 units.' style='{icon_style}'>&#9432;</span>
+                </div>
+                <div class='card-value'>{kpis['low_stock_items']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+    with col4:
+        st.markdown(f"""
+            <div class='card'>
+                <div class='card-title'>
+                    Prescriptions 
+                    <span title='Total number of prescriptions logged in the system.' style='{icon_style}'>&#9432;</span>
+                </div>
+                <div class='card-value'>{kpis['total_prescriptions']}</div>
+            </div>
+        """, unsafe_allow_html=True)
 
-# 2. CUSTOM CSS
-st.markdown(f"""
-<style>
-    /* Main App Container */
-    .stApp {{
-        background-color: {bg_color};
-        background-image: {bg_image_css};
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        color: {text_color};
-    }}
+st.markdown("<br>", unsafe_allow_html=True)
+
+# =====================================================================
+# CHARTS & RECENT ACTIVITY LAYOUT
+# =====================================================================
+left_col, right_col = st.columns([2, 1])
+
+with left_col:
+    # Notice the help="" parameter added here! It creates the (i) icon.
+    st.subheader("System Overview", help="Visual breakdown of active purchase orders and current inventory health grouped by SQL aggregates.")
+    chart_col1, chart_col2 = st.columns(2)
+
+    with chart_col1:
+        if not orders_data.empty:
+            fig_orders = px.pie(
+                orders_data, values='count', names='status', hole=0.6,
+                title="Purchase Order Distribution",
+                color_discrete_sequence=["#0d47a1", "#90caf9"]
+            )
+            fig_orders.update_traces(textinfo='percent+label')
+            fig_orders.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#000000'), title_font=dict(color='#000000'))
+            st.plotly_chart(fig_orders, use_container_width=True)
+        else:
+            st.info("No order data available.")
+
+    with chart_col2:
+        if not inventory_data.empty:
+            fig_inventory = px.pie(
+                inventory_data, values='count', names='stock_status', hole=0.6,
+                title="Overall Inventory Health",
+                color_discrete_sequence=["#e65100", "#43a047"]
+            )
+            fig_inventory.update_traces(textinfo='percent+label')
+            fig_inventory.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#000000'), title_font=dict(color='#000000'))
+            st.plotly_chart(fig_inventory, use_container_width=True)
+        else:
+            st.info("No inventory data available.")
+
+with right_col:
+    # Help icon added here!
+    st.markdown("<h3 style='color: black;'>Recent Activity</h3>", unsafe_allow_html=True, help="A live view of the 5 most recently logged prescriptions in the database, ordered by Date descending.")
+    st.markdown("<p style='color: black;'>Latest logged prescriptions</p>", unsafe_allow_html=True)
+    if not recent_rx_df.empty:
+        st.dataframe(recent_rx_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No recent activity found.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    /* Background Overlay */
-    .stApp::before {{
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: {overlay_color};
-        /* Removed blur here so the background image stays sharp, making the frosted tile pop */
-        z-index: -1;
-    }}
-    
-    /* The Frosted Glass Tile (Main Content Container) */
-    .block-container {{
-        padding: 3rem !important;
-        margin-top: 2rem !important;
-        margin-bottom: 2rem !important;
-        background-color: {tile_bg};
-        backdrop-filter: {tile_blur};
-        border-radius: 24px;
-        border: {tile_border};
-        box-shadow: {tile_shadow};
-    }}
+    # =================================================================
+    # QUICK ACTIONS
+    # =================================================================
+    # Help icon added here!
+    st.subheader("Quick Actions", help="Click these links to navigate directly to the specific transaction modules required for the academic presentation.")
+    try:
+        # Even the links get tooltips explaining the transactions!
+        st.page_link("pages/2_Dispense.py", label="Process Dispense (Tx 1 & 2)", icon="plus", help="Execute Transaction 1 (Dispensing) and Transaction 2 (Safe Reversal).")
+        st.page_link("pages/3_Order.py", label="Manage Orders (Tx 3 & 4)", icon="shopping-cart", help="Execute Transaction 3 (Batch Orders) and Transaction 4 (Complex Revisions).")
+        st.page_link("pages/1_Dashboard.py", label="View Inventory Data", icon="list", help="View normalized inventory and catalogue data.")
+    except Exception as e:
+        st.caption("Navigation links will activate once pages are fully configured.")
 
-    /* Card Styling */
-    .gradient-card {{
-        background: {card_bg};
-        backdrop-filter: {backdrop_blur};
-        border-radius: 18px;
-        padding: 30px;
-        box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.05);
-        border: 1px solid {border_color};
-        margin-bottom: 30px;
-        height: 100%;
-        transition: transform 0.2s ease-in-out;
-    }}
-
-    .nav-card-purple {{ background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%); }}
-    .nav-card-blue {{ background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }}
-
-    .card-title {{
-        font-size: 1.3rem;
-        font-weight: 700;
-        margin-bottom: 15px;
-        color: {text_color if theme_mode == "Light" else "white"};
-        letter-spacing: 0.5px;
-    }}
-
-    .card-text {{
-        font-size: 0.95rem;
-        color: {sub_text};
-        line-height: 1.6;
-    }}
-
-    h2 {{ margin-bottom: 1.5rem !important; font-weight: 800; color: {text_color} !important; }}
-    h4 {{ margin-bottom: 1.2rem !important; font-weight: 600; color: {text_color} !important; }}
-</style>
-""", unsafe_allow_html=True)
-
-# 3. HELPER FUNCTION: CREATE CIRCULAR KPI RINGS
-def create_ring_chart(title, value, max_value, color, subtitle, txt_col, bg_col):
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=value,
-        number={'font': {'size': 44, 'color': txt_col, 'family': 'sans-serif'}},
-        title={'text': f"<span style='font-size:18px; color:{txt_col}; font-weight:bold;'>{title}</span><br><span style='font-size:14px; color:{color}'>{subtitle}</span>"},
-        gauge={
-            'axis': {'range': [0, max_value], 'visible': False},
-            'bar': {'color': color, 'thickness': 0.18},
-            'bgcolor': bg_col,
-            'borderwidth': 0,
-        }
-    ))
-    fig.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-    return fig
-
-# 4. DATA (Mocked)
-total_patients, low_stock, pending_orders = 34, 5, 8
-
-# 5. BUILD THE UI LAYOUT
-st.markdown("<h2> Pharmacy Overview</h2>", unsafe_allow_html=True)
-
-st.markdown("<h4> Key Performance Indicators</h4>", unsafe_allow_html=True)
-kpi_col1, kpi_col2, kpi_col3 = st.columns(3, gap="large")
-
-with kpi_col1:
-    st.markdown('<div class="gradient-card">', unsafe_allow_html=True)
-    st.plotly_chart(create_ring_chart("Active Patients", total_patients, 50, "#00E676", "Currently Registered", text_color, plot_bg), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with kpi_col2:
-    st.markdown('<div class="gradient-card">', unsafe_allow_html=True)
-    status_color = "#00E676" if low_stock == 0 else "#FFC107"
-    status_text = "Inventory Stable" if low_stock == 0 else "Restock Suggested"
-    st.plotly_chart(create_ring_chart("Low Stock Items", low_stock, 20, status_color, status_text, text_color, plot_bg), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with kpi_col3:
-    st.markdown('<div class="gradient-card">', unsafe_allow_html=True)
-    st.plotly_chart(create_ring_chart("Pending Orders", pending_orders, 15, "#FF5252", "Requiring Approval", text_color, plot_bg), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Spacing between rows
-st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-
-bottom_col1, bottom_col2 = st.columns([1, 1], gap="large")
-
-with bottom_col1:
-    nav_row1_col1, nav_row1_col2 = st.columns(2, gap="medium")
-    with nav_row1_col1:
-        st.markdown(f'''<div class="gradient-card nav-card-purple"><div class="card-title" style="color:white"> Inventory</div><div class="card-text" style="color:#e0e7ff">Access detailed stock levels and batch tracking.</div></div>''', unsafe_allow_html=True)
-    with nav_row1_col2:
-        st.markdown(f'''<div class="gradient-card nav-card-blue"><div class="card-title" style="color:white"> Dispensing</div><div class="card-text" style="color:#e0f2fe">Fulfill prescriptions and generate labels.</div></div>''', unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="gradient-card"><div class="card-title"> Order Management System &nbsp; &nbsp; &nbsp; &nbsp; →</div></div>', unsafe_allow_html=True)
-
-with bottom_col2:
-    st.markdown('<div class="gradient-card">', unsafe_allow_html=True)
-    st.markdown(f'<div class="card-title">Order Fulfillment Timeline</div>', unsafe_allow_html=True)
-    chart_data = pd.DataFrame(
-        {"Orders": [4, 2, 7, 5, 12, 8, 9, 11]}, 
-        index=["7am", "9am", "11am", "1pm", "3pm", "5pm", "7pm", "9pm"]
-    )
-    st.area_chart(chart_data, color="#6366f1")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# 6. FOOTER
-st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
-st.markdown(f"<span style='color:#00E676; font-size: 14px; font-weight:bold;'>🟢 Operational</span> &nbsp; <span style='color:{sub_text}; font-size: 14px;'>| &nbsp; Last sync: Just now</span>", unsafe_allow_html=True)
+# =====================================================================
+# FOOTER
+# =====================================================================
+st.markdown("<div class='footer'>© 2026 Database Management Systems Group Project. Academic Use Only.</div>", unsafe_allow_html=True)
