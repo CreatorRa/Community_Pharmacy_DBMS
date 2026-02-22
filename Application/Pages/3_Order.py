@@ -19,7 +19,6 @@ st.divider()
 # This allows us to separate our Data Entry (INSERT) logic from our 
 # Data Retrieval (SELECT) logic within the same module.
 # =====================================================================
-# 💡 Added the "Cancel Order" tab here
 tab1, tab2, tab3, tab4 = st.tabs(["Create New Order", "Order History & Status", "Revise Order", "Cancel Order"])
 
 # ---------------------------------------------------------------------
@@ -219,7 +218,7 @@ with tab2:
     st.subheader("Order Monitoring")
     st.markdown("View all pending and fulfilled purchase orders in the system.")
     
-    # 💡 Added CANCELLED to the list of status filters
+    # Included CANCELLED to the list of status filters
     status_filter = st.radio(
         "Filter by Status:",
         ["All Orders", "PENDING", "FULFILLED", "CANCELLED"],
@@ -373,7 +372,7 @@ with tab3:
                             WHERE Product_id = %s AND Drug_id = %s;
                         """, (selected_order_id, delete_id))
                         
-                    # 🚨 COMMIT THE CHANGES 🚨
+                    #COMMIT THE CHANGES
                     cur.execute("COMMIT;")
                     st.success(f"Success! Order #{selected_order_id} has been fully revised.")
                     
@@ -408,7 +407,7 @@ with tab3:
         st.error(f"Database connection error: {e}")
 
 #---------------------------------------------------------------------
-# TAB 4: CANCEL ORDER (New Action)
+# TAB 4: CANCEL ORDER
 # ---------------------------------------------------------------------
 with tab4:
     st.subheader("Cancel Purchase Order")
