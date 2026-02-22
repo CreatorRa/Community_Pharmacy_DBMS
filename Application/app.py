@@ -138,18 +138,76 @@ kpis, orders_data, inventory_data, recent_rx_df = fetch_landing_page_data()
 # =====================================================================
 # LIVE KPI CARDS
 # =====================================================================
+
+# 1. Add the CSS for the custom tooltips
+st.markdown("""
+<style>
+    /* Container holding the icon */
+    .custom-tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: help;
+        color: #a0aab5;
+        margin-left: 6px;
+        font-size: 0.95rem;
+    }
+
+    /* The actual tooltip text box */
+    .custom-tooltip .tooltip-text {
+        visibility: hidden;
+        width: 220px;
+        background-color: #333333;
+        color: #ffffff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px;
+        position: absolute;
+        z-index: 100;
+        bottom: 150%; 
+        left: 50%;
+        margin-left: -110px; /* Centers the box */
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        
+        /* Reset font styles so it doesn't inherit the card-title caps/bold */
+        font-size: 0.8rem;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: normal;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Show the tooltip text when hovering over the container */
+    .custom-tooltip:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    
+    /* Little triangle arrow at the bottom of the tooltip */
+    .custom-tooltip .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333333 transparent transparent transparent;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 if kpis is not None:
     col1, col2, col3, col4 = st.columns(4)
-    
-    # CSS for the help icon to ensure it sits nicely next to the title
-    icon_style = "cursor: help; color: #a0aab5; margin-left: 6px; font-size: 0.95rem; vertical-align: middle;"
     
     with col1:
         st.markdown(f"""
             <div class='card'>
                 <div class='card-title'>
                     Total Patients 
-                    <span title='Total number of registered patients in the database.' style='{icon_style}'>&#9432;</span>
+                    <div class="custom-tooltip">&#9432;
+                        <span class="tooltip-text">Total number of registered patients in the database.</span>
+                    </div>
                 </div>
                 <div class='card-value'>{kpis['total_patients']}</div>
             </div>
@@ -160,7 +218,9 @@ if kpis is not None:
             <div class='card'>
                 <div class='card-title'>
                     Pending Orders 
-                    <span title='Orders that have been placed but not yet FULFILLED.' style='{icon_style}'>&#9432;</span>
+                    <div class="custom-tooltip">&#9432;
+                        <span class="tooltip-text">Orders that have been placed but not yet FULFILLED.</span>
+                    </div>
                 </div>
                 <div class='card-value'>{kpis['pending_orders']}</div>
             </div>
@@ -171,7 +231,9 @@ if kpis is not None:
             <div class='card'>
                 <div class='card-title'>
                     Low Stock Alerts 
-                    <span title='Inventory lots where the quantity on hand has dropped below 100 units.' style='{icon_style}'>&#9432;</span>
+                    <div class="custom-tooltip">&#9432;
+                        <span class="tooltip-text">Inventory lots where the quantity on hand has dropped below 100 units.</span>
+                    </div>
                 </div>
                 <div class='card-value'>{kpis['low_stock_items']}</div>
             </div>
@@ -182,7 +244,9 @@ if kpis is not None:
             <div class='card'>
                 <div class='card-title'>
                     Prescriptions 
-                    <span title='Total number of prescriptions logged in the system.' style='{icon_style}'>&#9432;</span>
+                    <div class="custom-tooltip">&#9432;
+                        <span class="tooltip-text">Total number of prescriptions logged in the system.</span>
+                    </div>
                 </div>
                 <div class='card-value'>{kpis['total_prescriptions']}</div>
             </div>
