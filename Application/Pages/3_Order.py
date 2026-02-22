@@ -19,7 +19,8 @@ st.divider()
 # This allows us to separate our Data Entry (INSERT) logic from our 
 # Data Retrieval (SELECT) logic within the same module.
 # =====================================================================
-tab1, tab2, tab3 = st.tabs(["Create New Order", "Order History & Status", "Revise Order"])
+# 💡 Added the "Cancel Order" tab here
+tab1, tab2, tab3, tab4 = st.tabs(["Create New Order", "Order History & Status", "Revise Order", "Cancel Order"])
 
 # ---------------------------------------------------------------------
 # TAB 1: CREATE NEW ORDER (Data Entry)
@@ -218,10 +219,10 @@ with tab2:
     st.subheader("Order Monitoring")
     st.markdown("View all pending and fulfilled purchase orders in the system.")
     
-    # Optional filter to sort between PENDING or FULFILLED, or view all
+    # 💡 Added CANCELLED to the list of status filters
     status_filter = st.radio(
         "Filter by Status:",
-        ["All Orders", "PENDING", "FULFILLED"],
+        ["All Orders", "PENDING", "FULFILLED", "CANCELLED"],
         horizontal=True
     )
     
@@ -402,6 +403,56 @@ with tab3:
                 except Exception as e:
                     tx4_conn.rollback()
                     st.error(f"Transaction Failed & Rolled Back! The database prevented incomplete data from saving.\n\nError Details: {e}")
+                    
+    except Exception as e:
+        st.error(f"Database connection error: {e}")
+
+#---------------------------------------------------------------------
+# TAB 4: CANCEL ORDER (New Action)
+# ---------------------------------------------------------------------
+with tab4:
+    st.subheader("Cancel Purchase Order")
+    st.markdown("Select a `PENDING` purchase order to cancel it. This executes a simple **UPDATE** statement to change the order status.")
+    
+    cancel_conn = get_connection()
+    try:
+        cur = cancel_conn.cursor()
+        
+        # 1. Fetch only orders that are PENDING to prevent canceling fulfilled orders
+        cur.execute("SELECT Order_id FROM PURCHASE_ORDER WHERE Status = 'PENDING' ORDER BY Order_id DESC;")
+        cancelable_orders = [row[0] for row in cur.fetchall()]
+        
+        if not cancelable_orders:
+            st.info("There are currently no PENDING orders available to cancel.")
+        else:
+            with st.form("cancel_order_form"):
+                cancel_order_id = st.selectbox("Select an Order to Cancel", cancelable_orders)
+                st.warning(f"Are you sure you want to cancel Order #{cancel_order_id}?")
+                
+                submitted_cancel = st.form_submit_button("Confirm Cancellation")
+                
+            if submitted_cancel:
+                try:
+                    cur.execute("BEGIN;")
+                    
+                    # Update the Status of the Parent Record to CANCELLED
+                    cur.execute("""
+                        UPDATE PURCHASE_ORDER 
+                        SET Status = 'CANCELLED' 
+                        WHERE Order_id = %s;
+                    """, (cancel_order_id,))
+                    
+                    cur.execute("COMMIT;")
+                    st.success(f"Success! Order #{cancel_order_id} has been officially CANCELLED.")
+                    
+                    # Prove the database was updated
+                    cur.execute("SELECT Order_id, Status FROM PURCHASE_ORDER WHERE Order_id = %s;", (cancel_order_id,))
+                    result = cur.fetchone()
+                    st.info(f"Current Database Status for Order #{result[0]}: **{result[1]}**")
+                    
+                except Exception as e:
+                    cancel_conn.rollback()
+                    st.error(f"Failed to cancel order: {e}")
                     
     except Exception as e:
         st.error(f"Database connection error: {e}")
