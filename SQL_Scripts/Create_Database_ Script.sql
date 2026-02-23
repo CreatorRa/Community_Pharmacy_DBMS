@@ -151,7 +151,7 @@ CREATE TABLE PAYS (
     FOREIGN KEY (Policy_id) REFERENCES INSURANCE(Policy_id)
 );
 
--- 3. Indexes, Views, Triggers, and Asserstions
+-- 3. Indexes, Views, and Triggers
 
 CREATE INDEX idx_patient_name ON PATIENT(Name);
 -- We are creating an index on patient's name so that we can speed up the retrival times for pharmacists. 
@@ -320,6 +320,7 @@ CREATE TRIGGER trg_assert_no_dispense_cancelled
 BEFORE INSERT OR UPDATE ON dispense
 FOR EACH ROW
 EXECUTE FUNCTION assert_no_dispense_for_cancelled_rx();
+
 
 
 
